@@ -1,80 +1,77 @@
-var slideCount;
-var slideWidth;
-var slideHeight;
-var sliderUlWidth;
+var rssReader = {
+    containers : null,
 
-$(function() {
-	getRssFeed("http://rss.cnn.com/rss/edition_space.rss", mapFeed);
-	
-	$('.left-arrow').on('click', function () {
-		moveLeft();
-	});
+    // initialization function
+    init : function(selector,googUrl) {
 
-	$('.right-arrow').on('click', function () {
-		moveRight();
-	});
-	
-	$(window).on('resize', function () {
-		returnCarouselList();
-	});
-});
+            // creating temp scripts which will help us to transform XML (RSS) to JSON
+            
+            var script = document.createElement('script');
+            script.setAttribute('type','text/javascript');
+            script.setAttribute('charset','utf-8');
+            script.setAttribute('src',googUrl);
+            document.getElementById("footer").appendChild(script);
+        
+    },
 
-function moveLeft() {
-	$('.carousel').animate({
-		left: + slideWidth
-	}, 200, function () {
-		$('.carousel li:last-child').prependTo('.carousel');
-		$('.carousel').css('left', '');
-	});
+    // parsing of results by google
+    parse : function(context, data) {
+        var container = document.getElementById(context);
+        container.innerHTML = '';
+
+        // creating list of elements
+        var mainList = document.createElement('ul');
+
+        // also creating its childs (subitems)
+        var entries = data.feed.entries;
+        
+
+        for (var i=0; i<entries.length; i++) {
+            
+            var listItem = document.createElement('li');
+            var title = (i+1)+" . "+entries[i].title;
+            var contentSnippet = entries[i].contentSnippet;
+            var contentSnippetText = document.createTextNode(contentSnippet);
+
+            var link = document.createElement('a');
+            link.setAttribute('href', entries[i].link);
+            link.setAttribute('target','_blank');
+            var text = document.createTextNode(title);
+            link.appendChild(text);
+
+            // add link to list item
+            listItem.appendChild(link);
+
+            var desc = document.createElement('p');
+            desc.appendChild(contentSnippetText);
+
+            // add description to list item
+            listItem.appendChild(desc);
+
+            // adding list item to main list
+            mainList.appendChild(listItem);
+        }
+        container.appendChild(mainList);
+        document.getElementById("loading_feed").style.display = "none";
+    }
+};
+
+
+//getFeed method called when getFeed button is clicked
+function getFeed(){
+    var feedURL = document.getElementById("feedURL").value;
+    var fetchFeed = document.getElementById("fetchFeed").value;
+    if(feedURL == ""){
+        alert("Please Enter Feed URL");
+    }else if(fetchFeed == ""){
+        alert("Please Enter Number of Feed to Fetch");
+    }else{
+            document.getElementById("loading_feed").style.display = "block";
+            var url = encodeURIComponent(feedURL);
+            var googUrl = 'https://ajax.googleapis.com/ajax/services/feed/load?v=1.0&num='+fetchFeed+'&q='+url+'&callback=rssReader.parse&context=post_results1';
+            console.log(googUrl);
+            rssReader.init('post_results1',googUrl);
+    }
+    
 }
 
-function moveRight() {
-	$('.carousel').animate({
-		left: - slideWidth
-	}, 200, function () {
-		$('.carousel li:first-child').appendTo('.carousel');
-		$('.carousel').css('left', '');
-	});
-}
-
-function getRssFeed(url, callback) {
-	return feednami.loadGoogleFormat(encodeURI(url), callback);
-}
-
-function mapFeed(result) {
-	if (result.error) {
-      console.log(result.error)
-  } else {
-		createCarouselList(result.feed.entries.slice(0, 5));
-		createFeedList(result.feed.entries.slice(0, 20));
-  }
-}
-
-function createCarouselList(elements) {
-	var list = [];
-	$(elements).each(function(index, element) {
-		list.push("<li><h3><a href='"+ element.link +"'>"+ element.title +"</a></h3><p>"+ new Date(element.publishedDate).toLocaleDateString("pt-BR") +"</p><span class='carousel-footer'>"+ (index + 1) +" out of 5</span></li>");
-	});
-	
-	$(".carousel").append(list);
-	
-}
-
-function createFeedList(elements) {
-	var list = [];
-	$(elements).each(function(index, element) {
-		list.push("<li><a href='"+ element.link +"'>"+ element.title +"</a></li>");
-	});
-	$(".list").append(list);
-	returnCarouselList();
-}
-
-function returnCarouselList() {
-	slideCount = $('.carousel li').length;
-	slideWidth = $('.carousel li').width();
-	slideHeight = $('.carousel li').height();
-	sliderUlWidth = slideCount * slideWidth;
-	$('.slider').css({ width: slideWidth, height: slideHeight });
-	$('.carousel').css({ width: sliderUlWidth, marginLeft: - slideWidth });
-	$('.carousel li:last-child').prependTo('.carousel');
-}
